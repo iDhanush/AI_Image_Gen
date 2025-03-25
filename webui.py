@@ -89,7 +89,7 @@ import nest_asyncio
 ngrok.set_auth_token(auth_token)
 
 # Connect to ngrok
-ngrok_tunnel = ngrok.connect(8000, hostname='seriously-distinct-bear.ngrok-free.app')
+ngrok_tunnel = ngrok.connect(7860, hostname='seriously-distinct-bear.ngrok-free.app')
 
 
 # print('Public URL:', ngrok_tunnel.public_url)
