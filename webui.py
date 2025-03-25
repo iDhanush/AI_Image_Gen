@@ -1,61 +1,51 @@
 import gradio as gr
-import json
 import uuid
 import base64
 import asyncio
-from fastapi import FastAPI, HTTPException
+from typing import List, Optional
 from pydantic import BaseModel
-from modules.config import default_base_model_name
+from fastapi import FastAPI, HTTPException
 from modules.async_worker import AsyncTask
-
-
-app = FastAPI()
+from modules.config import default_base_model_name
 
 
 class GenerationRequest(BaseModel):
     prompt: str
-    negative_prompt: str = ""
-    styles: list = []
-    performance: str = "Speed"
-    aspect_ratio: str = "1152×896"
-    image_number: int = 1
-    seed: int = -1
-    base_model: str = default_base_model_name
+    negative_prompt: Optional[str] = ""
+    styles: Optional[List[str]] = []
+    performance: Optional[str] = "Speed"
+    aspect_ratio: Optional[str] = "1152×896"
+    image_number: Optional[int] = 1
+    seed: Optional[int] = -1
+    base_model: Optional[str] = default_base_model_name
+    # Add other parameters with proper typing
 
 
 @app.post("/generate")
 async def generate_image(request: GenerationRequest):
     try:
-        task_id = str(uuid.uuid4())
-
-        # Create task arguments matching Fooocus's worker expectations
+        # Create task arguments with proper types
         task_args = [
-            task_id,
-            request.prompt,
-            request.negative_prompt,
-            request.styles,
-            request.performance,
-            request.aspect_ratio,
-            request.image_number,
-            request.seed,
-            request.base_model
+            str(uuid.uuid4()),  # task_id
+            request.prompt,  # prompt
+            request.negative_prompt,  # negative_prompt
+            request.styles,  # style_selections
+            request.performance,  # performance_selection
+            request.aspect_ratio,  # aspect_ratios_selection
+            request.image_number,  # image_number
+            request.base_model,  # base_model (string)
+            request.seed,  # seed (int)
+            # Add other parameters in the EXACT ORDER expected by Fooocus
+            # ...
         ]
 
-        # Create AsyncTask instance
         task = AsyncTask(args=task_args)
-
-        # Add task to processing queue
         shared.async_tasks.append(task)
 
-        # Wait for completion
         while not task.finished:
             await asyncio.sleep(0.1)
 
-        # Process results
-        return {
-            "task_id": task_id,
-            "images": process_results(task.results)
-        }
+        return {"images": process_results(task.results)}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
