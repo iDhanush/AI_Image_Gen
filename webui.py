@@ -80,9 +80,21 @@ with gr.Blocks():
         _js="() => window.open('http://localhost:7860/docs')"
     )
 
-if __name__ == "__main__":
-    # Mount FastAPI app on Gradio server
-    app = gr.mount_gradio_app(app, gr.Blocks(), path="/ui")
-    import uvicorn
+app = gr.mount_gradio_app(app, gr.Blocks(), path="/ui")
 
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+auth_token = "2up3ov6yLf17M6gkjrK91ZoqlZO_6MjbVjwYQJfbqHFS1XZQJ"
+import ngrok
+import nest_asyncio
+# Set the authtoken
+ngrok.set_auth_token(auth_token)
+
+# Connect to ngrok
+ngrok_tunnel = ngrok.connect(8000, hostname='seriously-distinct-bear.ngrok-free.app')
+
+
+print('Public URL:', ngrok_tunnel.public_url)
+
+# Apply nest_asyncio
+nest_asyncio.apply()
+import uvicorn
+uvicorn.run(app, host="0.0.0.0", port=7860)
