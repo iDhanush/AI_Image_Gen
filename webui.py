@@ -7,8 +7,8 @@ import numpy as np
 from io import BytesIO
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from modules import config, worker, async_worker
-
+from modules import config, async_worker
+import modules.async_worker as worker
 app = FastAPI()
 
 
