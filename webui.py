@@ -1,109 +1,108 @@
 import gradio as gr
-import base64
-import asyncio
-from fastapi import FastAPI, HTTPException
+import modules.config
 from modules.async_worker import AsyncTask
-from typing import List, Optional, Dict
-from pydantic import BaseModel
-import uuid
-app = FastAPI()
+import args_manager
+from modules.flags import Performance, OutputFormat
 
 
+def generate_api(prompt, negative_prompt, style_selections, performance, aspect_ratio, image_number,
+                 output_format, seed, base_model, refiner_model, refiner_switch, loras, sampler, scheduler):
+    # Create task with parameters
+    task = AsyncTask(args=[
+        prompt, negative_prompt, style_selections,
+        performance, aspect_ratio, image_number, output_format, seed,
+        base_model, refiner_model, refiner_switch, loras,
+        sampler, scheduler
+    ])
 
-class GenerationRequest(BaseModel):
-    prompt: str
-    negative_prompt: Optional[str] = ""
-    styles: Optional[List[str]] = []
-    performance: Optional[str] = "Speed"
-    aspect_ratio: Optional[str] = "1152×896"
-    image_number: Optional[int] = 1
-    seed: Optional[int] = -1
-    base_model: Optional[str] = "juggernautXL_v8Rundiffusion.safetensors"
-    refiner_model: Optional[str] = "None"
-    refiner_switch: Optional[float] = 0.5
-    loras: Optional[Dict[int, tuple]] = {}  # {0: (True, "None", 1.0)}
-    sharpness: Optional[float] = 2.0
-    guidance_scale: Optional[float] = 4.0
-    input_image: Optional[str] = None  # Base64 encoded image
-    # Add other parameters as needed...
+    # Process task and return results
+    # (Implementation would go here to actually generate images)
+    return [task]  # Return generated images paths
 
 
-@app.post("/generate")
-async def generate_image(request: GenerationRequest):
-    try:
-        # Prepare all parameters in EXACT order expected by Fooocus worker
-        task_args = [
-            str(uuid.uuid4()),  # 0: task_id
-            True,  # 1: generate_image_grid
-            request.prompt,  # 2: prompt
-            request.negative_prompt,  # 3: negative_prompt
-            request.styles,  # 4: style_selections
-            request.performance,  # 5: performance_selection
-            request.aspect_ratio,  # 6: aspect_ratios_selection
-            request.image_number,  # 7: image_number
-            request.base_model,  # 8: base_model
-            request.refiner_model,  # 9: refiner_model
-            request.refiner_switch,  # 10: refiner_switch
-            # LoRA parameters (matches original structure)
-            *[item for lora in request.loras.values() for item in lora],
-            # Image parameters
-            request.sharpness,  # Sharpness
-            request.guidance_scale,  # Guidance scale
-            # Add other parameters in EXACT order...
-            # ...
-        ]
+# Create simplified interface
+with gr.Blocks(title="Fooocus API") as app:
+    with gr.Row():
+        with gr.Column():
+            # Core Parameters
+            prompt = gr.Textbox(label="Prompt")
+            negative_prompt = gr.Textbox(label="Negative Prompt")
+            style_selections = gr.CheckboxGroup(
+                choices=modules.config.legal_style_names,
+                label="Styles"
+            )
 
-        task = AsyncTask(args=task_args)
-        shared.async_tasks.append(task)
+            # Generation Settings
+            performance = gr.Radio(
+                label="Performance",
+                choices=Performance.values(),
+                value=Performance.SPEED.value
+            )
+            aspect_ratio = gr.Radio(
+                label="Aspect Ratio",
+                choices=modules.config.available_aspect_ratios,
+                value="1152×896"
+            )
+            image_number = gr.Slider(1, 8, value=2, step=1, label="Image Number")
+            output_format = gr.Radio(
+                label="Output Format",
+                choices=OutputFormat.list(),
+                value="png"
+            )
+            seed = gr.Number(label="Seed", value=-1)
 
-        while not task.finished:
-            await asyncio.sleep(0.1)
+            # Model Settings
+            base_model = gr.Dropdown(
+                label="Base Model",
+                choices=modules.config.model_filenames,
+                value=modules.config.default_base_model_name
+            )
+            refiner_model = gr.Dropdown(
+                label="Refiner Model",
+                choices=['None'] + modules.config.model_filenames,
+                value='None'
+            )
+            refiner_switch = gr.Slider(0.1, 1.0, value=0.5, label="Refiner Switch At")
 
-        return {"images": process_results(task.results)}
+            # Advanced Settings
+            loras = gr.CheckboxGroup(
+                label="LoRAs",
+                choices=modules.config.lora_filenames
+            )
+            sampler = gr.Dropdown(
+                label="Sampler",
+                choices=modules.config.sampler_list,
+                value=modules.config.default_sampler
+            )
+            scheduler = gr.Dropdown(
+                label="Scheduler",
+                choices=modules.config.scheduler_list,
+                value=modules.config.default_scheduler
+            )
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+            submit_btn = gr.Button("Generate")
 
-def process_results(results):
-    return [image_to_base64(img) for img in results]
+        # Outputs
+        output_gallery = gr.Gallery(label="Generated Images")
 
-
-def image_to_base64(img):
-    if isinstance(img, str):  # File path
-        with open(img, "rb") as f:
-            return base64.b64encode(f.read()).decode("utf-8")
-    elif hasattr(img, "save"):  # PIL Image
-        buffered = BytesIO()
-        img.save(buffered, format="PNG")
-        return base64.b64encode(buffered.getvalue()).decode("utf-8")
-    return ""
-
-
-
-
-with gr.Blocks():
-    # Minimal UI for testing
-    gr.Markdown("## Fooocus API Server")
-    gr.Button(value="API Docs").click(
-        None,
-        _js="() => window.open('http://localhost:7860/docs')"
+    # API Endpoint
+    submit_btn.click(
+        generate_api,
+        inputs=[
+            prompt, negative_prompt, style_selections,
+            performance, aspect_ratio, image_number,
+            output_format, seed, base_model,
+            refiner_model, refiner_switch, loras,
+            sampler, scheduler
+        ],
+        outputs=output_gallery
     )
 
-app = gr.mount_gradio_app(app, gr.Blocks(), path="/ui")
-
-auth_token = "2up3ov6yLf17M6gkjrK91ZoqlZO_6MjbVjwYQJfbqHFS1XZQJ"
-import ngrok
-import nest_asyncio
-# Set the authtoken
-ngrok.set_auth_token(auth_token)
-
-# Connect to ngrok
-ngrok_tunnel = ngrok.connect(7860, hostname='seriously-distinct-bear.ngrok-free.app')
-
-
-# print('Public URL:', ngrok_tunnel.public_url)
-
-# Apply nest_asyncio
-nest_asyncio.apply()
-import uvicorn
-uvicorn.run(app, host="0.0.0.0", port=7860)
+# Launch configuration
+app.launch(
+    inbrowser=args_manager.args.in_browser,
+    server_name=args_manager.args.listen,
+    server_port=args_manager.args.port,
+    share=args_manager.args.share,
+    allowed_paths=[modules.config.path_outputs]
+)
