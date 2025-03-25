@@ -1,5 +1,6 @@
 import gradio as gr
 import modules.config
+from modules import sdxl_styles
 from modules.async_worker import AsyncTask
 import args_manager
 from modules.flags import Performance, OutputFormat
@@ -28,7 +29,7 @@ with gr.Blocks(title="Fooocus API") as app:
             prompt = gr.Textbox(label="Prompt")
             negative_prompt = gr.Textbox(label="Negative Prompt")
             style_selections = gr.CheckboxGroup(
-                choices=modules.config.legal_style_names,
+                choices=sdxl_styles.legal_style_names,
                 label="Styles"
             )
 
