@@ -12,7 +12,7 @@ import modules.flags as flags
 from modules.util import get_image_size_info
 from extras.inpaint_mask import generate_mask_from_image, SAMOptions
 
-app = FastAPI(title="Fooocus API", version=config.version)
+app = FastAPI(title="Fooocus API")
 
 # CORS configuration
 app.add_middleware(
