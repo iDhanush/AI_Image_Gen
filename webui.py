@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from modules.config import default_base_model_name
 from modules.async_worker import AsyncTask
-import modules.shared as shared
+
 
 app = FastAPI()
 
@@ -76,16 +76,7 @@ def image_to_base64(img):
     return ""
 
 
-# Minimal Gradio interface
-shared.gradio_root = gr.Blocks()
-with shared.gradio_root:
-    gr.Markdown("## Fooocus API Server")
-    gr.Button("API Documentation").click(
-        None,
-        _js="() => window.open('/docs')"
-    )
 
-# Initialize Gradio components (minimal)
 
 with gr.Blocks():
     # Minimal UI for testing
