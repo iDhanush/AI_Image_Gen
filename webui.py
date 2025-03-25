@@ -23,7 +23,7 @@ app.add_middleware(
 
 # Temporary storage for tasks (replace with database in production)
 tasks = {}
-output_dir = "outputs"
+output_dir = "/content/outputs"
 os.makedirs(output_dir, exist_ok=True)
 
 
