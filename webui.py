@@ -169,8 +169,15 @@ def get_models():
 
 
 # Add more endpoints for style handling, configuration, etc.
+auth_token = "cr_2pTofgWxpQzDJCTadgKMKdu1YQv"
+import ngrok
+# Set the authtoken
+ngrok.set_auth_token(auth_token)
+ngrok_tunnel = ngrok.connect(8000, hostname='your-host-name.ngrok-free.app')
+print('Public URL:', ngrok_tunnel.public_url)
+# Apply nest_asyncio
+nest_asyncio.apply()
+if __name__ == "__main__":
+    import uvicorn
 
-
-import uvicorn
-
-uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
