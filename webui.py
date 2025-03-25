@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 import asyncio
 import modules.config as config
+import modules
 
 app = FastAPI(title="Fooocus API")
 
@@ -74,27 +75,114 @@ async def generate_image(params: GenerationParams, background_tasks: BackgroundT
 
 async def process_generation(task_id: str, params: GenerationParams):
     try:
-        # Implement actual generation logic using modules.config and worker
-        # This is a simplified example
         tasks[task_id]["status"] = "processing"
 
-        # Simulate generation process
-        await asyncio.sleep(2)
+        # Map API parameters to Fooocus internal configuration
+        args = prepare_generation_parameters(params)
 
-        # Save mock result
-        output_path = os.path.join(output_dir, f"{task_id}.png")
-        # Replace with actual generation and saving code
+        # Create and queue the async task
+        task = worker.AsyncTask(args=args)
+        worker.async_tasks.append(task)
 
-        tasks[task_id]["status"] = "completed"
-        tasks[task_id]["result"] = {
-            "images": [output_path],
-            "metadata": params.dict()
-        }
+        # Wait for task completion
+        while not task.yields and task.processing:
+            await asyncio.sleep(0.1)
+
+        # Process task results
+        output_paths = []
+        while task.processing:
+            await asyncio.sleep(0.1)
+            if task.yields:
+                flag, content = task.yields.pop(0)
+                if flag == "finish":
+                    output_paths = save_generated_images(content, task_id)
+
+        if output_paths:
+            tasks[task_id]["status"] = "completed"
+            tasks[task_id]["result"] = {
+                "images": output_paths,
+                "metadata": params.dict()
+            }
+        else:
+            tasks[task_id]["status"] = "failed"
+            tasks[task_id]["error"] = "No images generated"
 
     except Exception as e:
         tasks[task_id]["status"] = "failed"
         tasks[task_id]["error"] = str(e)
+        raise
 
+
+def prepare_generation_parameters(params: GenerationParams) -> list:
+    """Convert API parameters to Fooocus-compatible arguments list"""
+    args = []
+
+    # Basic parameters
+    args.append(False)  # generate_image_grid
+    args.append(params.prompt)
+    args.append(params.negative_prompt or "")
+    args.append(params.styles or modules.config.default_styles.copy())
+
+    # Performance settings
+    performance = params.performance or modules.config.default_performance
+    args.append(performance)
+
+    # Aspect ratio calculation
+    aspect_ratio = f"{params.width}×{params.height}"
+    args.append(aspect_ratio)
+
+    # Image settings
+    args.append(params.num_images or 1)
+    args.append(modules.config.default_output_format)
+    args.append(params.seed or random.randint(0, 2 ** 32 - 1))
+    args.append(False)  # read_wildcards_in_order
+    args.append(params.sharpness or modules.config.default_sample_sharpness)
+    args.append(params.guidance_scale or modules.config.default_cfg_scale)
+
+    # Model configuration
+    args.append(modules.config.default_base_model_name)
+    args.append(modules.config.default_refiner_model_name)
+    args.append(modules.config.default_refiner_switch)
+
+    # Add default values for remaining parameters
+    args += get_default_parameters()
+
+    return args
+
+
+def get_default_parameters():
+    """Return default values for parameters not specified in the API"""
+    return [
+        # LoRA parameters (disabled)
+        *([False, "None", 1.0] * modules.config.default_max_lora_number),
+        # Image input parameters
+        False, "uov",  # input_image_checkbox, current_tab
+        # Upscale parameters
+        flags.uov_list[0], None,  # uov_method, uov_input_image
+        # Inpainting defaults
+        [], None, "", None,  # outpaint_selections, inpaint_input_image, etc.
+        # Preview/NSFW settings
+        modules.config.default_black_out_nsfw,
+        flags.Performance.has_restricted_features(modules.config.default_performance),
+        False, modules.config.default_black_out_nsfw,
+        # Advanced parameters
+        1.5, 0.8, 0.3, modules.config.default_cfg_tsnr, modules.config.default_clip_skip,
+        modules.config.default_sampler, modules.config.default_scheduler, modules.config.default_vae,
+        # ... (remaining default parameters)
+    ]
+
+
+def save_generated_images(images, task_id: str) -> list:
+    """Save generated images to output directory"""
+    output_paths = []
+    os.makedirs(output_dir, exist_ok=True)
+
+    for idx, img in enumerate(images):
+        output_path = os.path.join(output_dir, f"{task_id}_{idx}.png")
+        img.save(output_path)
+        output_paths.append(output_path)
+
+    return output_paths
 
 @app.get("/tasks/{task_id}")
 def get_task_status(task_id: str):
