@@ -173,7 +173,7 @@ auth_token = "2uoywGCki1xWQ2wu9dkfM6ThACO_4dCUMURv8qK8HZC8QnbEq"
 import ngrok
 # Set the authtoken
 ngrok.set_auth_token(auth_token)
-ngrok_tunnel = ngrok.connect(8000, hostname='your-host-name.ngrok-free.app')
+ngrok_tunnel = ngrok.connect(8000, hostname='seriously-distinct-bear.ngrok-free.app')
 print('Public URL:', ngrok_tunnel.public_url)
 # Apply nest_asyncio
 nest_asyncio.apply()
