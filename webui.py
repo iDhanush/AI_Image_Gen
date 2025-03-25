@@ -3,7 +3,7 @@ import modules.config
 from modules import sdxl_styles
 from modules.async_worker import AsyncTask
 import args_manager
-from modules.flags import Performance, OutputFormat
+from modules.flags import Performance, OutputFormat, sampler_list, scheduler_list
 
 
 def generate_api(prompt, negative_prompt, style_selections, performance, aspect_ratio, image_number,
@@ -72,12 +72,12 @@ with gr.Blocks(title="Fooocus API") as app:
             )
             sampler = gr.Dropdown(
                 label="Sampler",
-                choices=modules.config.sampler_list,
+                choices=sampler_list,
                 value=modules.config.default_sampler
             )
             scheduler = gr.Dropdown(
                 label="Scheduler",
-                choices=modules.config.scheduler_list,
+                choices=scheduler_list,
                 value=modules.config.default_scheduler
             )
 
