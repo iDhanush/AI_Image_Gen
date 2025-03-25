@@ -121,7 +121,7 @@ def prepare_generation_parameters(params: GenerationParams) -> list:
     args.append(False)  # generate_image_grid
     args.append(params.prompt)
     args.append(params.negative_prompt or "")
-    args.append(params.styles or modules.config.default_styles.copy())
+    args.append(params.style_selections or modules.config.default_styles.copy())
 
     # Performance settings
     performance = params.performance or modules.config.default_performance
