@@ -3,16 +3,15 @@ import json
 import uuid
 import base64
 import asyncio
-import numpy as np
-from io import BytesIO
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from modules import config, async_worker
-import modules.async_worker as worker
+from modules.config import default_base_model_name
+from modules.async_worker import AsyncTask
+import modules.shared as shared
+
 app = FastAPI()
 
 
-# Simplified Configuration
 class GenerationRequest(BaseModel):
     prompt: str
     negative_prompt: str = ""
@@ -21,54 +20,70 @@ class GenerationRequest(BaseModel):
     aspect_ratio: str = "1152×896"
     image_number: int = 1
     seed: int = -1
-    base_model: str = config.default_base_model_name
-    # Add other parameters as needed...
+    base_model: str = default_base_model_name
 
 
 @app.post("/generate")
 async def generate_image(request: GenerationRequest):
     try:
-        # Create async task
         task_id = str(uuid.uuid4())
-        task = worker.AsyncTask(
-            args=[
-                task_id,
-                request.prompt,
-                request.negative_prompt,
-                request.styles,
-                request.performance,
-                request.aspect_ratio,
-                request.image_number,
-                request.seed,
-                request.base_model,
-                # Add other parameters...
-            ]
-        )
 
-        # Add task to worker
-        async_worker.async_tasks.append(task)
+        # Create task arguments matching Fooocus's worker expectations
+        task_args = [
+            task_id,
+            request.prompt,
+            request.negative_prompt,
+            request.styles,
+            request.performance,
+            request.aspect_ratio,
+            request.image_number,
+            request.seed,
+            request.base_model
+        ]
 
-        # Wait for task completion
+        # Create AsyncTask instance
+        task = AsyncTask(args=task_args)
+
+        # Add task to processing queue
+        shared.async_tasks.append(task)
+
+        # Wait for completion
         while not task.finished:
             await asyncio.sleep(0.1)
 
-        # Get results
-        results = task.results
-        return {"task_id": task_id, "images": process_images(results)}
+        # Process results
+        return {
+            "task_id": task_id,
+            "images": process_results(task.results)
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def process_images(results):
-    """Convert generated images to base64"""
-    processed = []
-    for img_path in results:
-        with open(img_path, "rb") as f:
-            encoded = base64.b64encode(f.read()).decode("utf-8")
-            processed.append(f"data:image/png;base64,{encoded}")
-    return processed
+def process_results(results):
+    return [image_to_base64(img) for img in results]
 
+
+def image_to_base64(img):
+    if isinstance(img, str):  # File path
+        with open(img, "rb") as f:
+            return base64.b64encode(f.read()).decode("utf-8")
+    elif hasattr(img, "save"):  # PIL Image
+        buffered = BytesIO()
+        img.save(buffered, format="PNG")
+        return base64.b64encode(buffered.getvalue()).decode("utf-8")
+    return ""
+
+
+# Minimal Gradio interface
+shared.gradio_root = gr.Blocks()
+with shared.gradio_root:
+    gr.Markdown("## Fooocus API Server")
+    gr.Button("API Documentation").click(
+        None,
+        _js="() => window.open('/docs')"
+    )
 
 # Initialize Gradio components (minimal)
 
