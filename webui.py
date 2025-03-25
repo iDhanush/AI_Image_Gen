@@ -1,14 +1,14 @@
 import gradio as gr
-import uuid
 import base64
 import asyncio
-from typing import List, Optional
-from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
 from modules.async_worker import AsyncTask
-from modules.config import default_base_model_name
-
+from typing import List, Optional, Dict
+from pydantic import BaseModel
+import uuid
 app = FastAPI()
+
+
 
 class GenerationRequest(BaseModel):
     prompt: str
@@ -18,25 +18,38 @@ class GenerationRequest(BaseModel):
     aspect_ratio: Optional[str] = "1152×896"
     image_number: Optional[int] = 1
     seed: Optional[int] = -1
-    base_model: Optional[str] = default_base_model_name
-    # Add other parameters with proper typing
+    base_model: Optional[str] = "juggernautXL_v8Rundiffusion.safetensors"
+    refiner_model: Optional[str] = "None"
+    refiner_switch: Optional[float] = 0.5
+    loras: Optional[Dict[int, tuple]] = {}  # {0: (True, "None", 1.0)}
+    sharpness: Optional[float] = 2.0
+    guidance_scale: Optional[float] = 4.0
+    input_image: Optional[str] = None  # Base64 encoded image
+    # Add other parameters as needed...
 
 
 @app.post("/generate")
 async def generate_image(request: GenerationRequest):
     try:
-        # Create task arguments with proper types
+        # Prepare all parameters in EXACT order expected by Fooocus worker
         task_args = [
-            str(uuid.uuid4()),  # task_id
-            request.prompt,  # prompt
-            request.negative_prompt,  # negative_prompt
-            request.styles,  # style_selections
-            request.performance,  # performance_selection
-            request.aspect_ratio,  # aspect_ratios_selection
-            request.image_number,  # image_number
-            request.base_model,  # base_model (string)
-            request.seed,  # seed (int)
-            # Add other parameters in the EXACT ORDER expected by Fooocus
+            str(uuid.uuid4()),  # 0: task_id
+            True,  # 1: generate_image_grid
+            request.prompt,  # 2: prompt
+            request.negative_prompt,  # 3: negative_prompt
+            request.styles,  # 4: style_selections
+            request.performance,  # 5: performance_selection
+            request.aspect_ratio,  # 6: aspect_ratios_selection
+            request.image_number,  # 7: image_number
+            request.base_model,  # 8: base_model
+            request.refiner_model,  # 9: refiner_model
+            request.refiner_switch,  # 10: refiner_switch
+            # LoRA parameters (matches original structure)
+            *[item for lora in request.loras.values() for item in lora],
+            # Image parameters
+            request.sharpness,  # Sharpness
+            request.guidance_scale,  # Guidance scale
+            # Add other parameters in EXACT order...
             # ...
         ]
 
@@ -50,7 +63,6 @@ async def generate_image(request: GenerationRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 def process_results(results):
     return [image_to_base64(img) for img in results]
