@@ -1,16 +1,14 @@
 import os
-import json
-import uuid
 import time
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, BackgroundTasks
+import uuid
+from typing import List, Optional, Dict, Any
+
+from fastapi import FastAPI, HTTPException, UploadFile, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+
 import modules.config as config
-import modules.flags as flags
-from modules.util import get_image_size_info
-from extras.inpaint_mask import generate_mask_from_image, SAMOptions
 
 app = FastAPI(title="Fooocus API")
 
@@ -171,13 +169,13 @@ def get_models():
 # Add more endpoints for style handling, configuration, etc.
 auth_token = "2uoywGCki1xWQ2wu9dkfM6ThACO_4dCUMURv8qK8HZC8QnbEq"
 import ngrok
+import nest_asyncio
 # Set the authtoken
 ngrok.set_auth_token(auth_token)
 ngrok_tunnel = ngrok.connect(8000, hostname='seriously-distinct-bear.ngrok-free.app')
 print('Public URL:', ngrok_tunnel.public_url)
 # Apply nest_asyncio
 nest_asyncio.apply()
-if __name__ == "__main__":
-    import uvicorn
+import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+uvicorn.run(app, host="0.0.0.0", port=8000)
