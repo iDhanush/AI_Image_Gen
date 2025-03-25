@@ -75,9 +75,11 @@ def create_fooocus_interface():
 demo = create_fooocus_interface()
 
 # For Gradio API usage
+interface = demo.launch(
+    server_name="0.0.0.0",  # Listen on all network interfaces
+    server_port=7860,  # Default Gradio port
+    share=True  # Set to True to get a public link
+)
 
-demo.launch(
-        server_name="0.0.0.0",  # Listen on all network interfaces
-        server_port=7860,  # Default Gradio port
-        share=False  # Set to True if you want a public link
-    )
+# Print the live public URL
+print(f"Gradio interface live at: {interface}")
