@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException
 from modules.async_worker import AsyncTask
 from modules.config import default_base_model_name
 
+app = FastAPI()
 
 class GenerationRequest(BaseModel):
     prompt: str
