@@ -25,3 +25,4 @@ segment_anything==1.0
 ngrok
 fastapi
 pydantic
+nest_asyncio
