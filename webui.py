@@ -169,7 +169,7 @@ def get_models():
 
 
 # Add more endpoints for style handling, configuration, etc.
-auth_token = "cr_2pTofgWxpQzDJCTadgKMKdu1YQv"
+auth_token = "2uoywGCki1xWQ2wu9dkfM6ThACO_4dCUMURv8qK8HZC8QnbEq"
 import ngrok
 # Set the authtoken
 ngrok.set_auth_token(auth_token)
