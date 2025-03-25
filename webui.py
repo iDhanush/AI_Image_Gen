@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
-
+import asyncio
 import modules.config as config
 
 app = FastAPI(title="Fooocus API")
