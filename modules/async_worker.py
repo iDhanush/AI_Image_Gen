@@ -1483,3 +1483,44 @@ def worker():
 
 
 threading.Thread(target=worker, daemon=True).start()
+import os
+import time
+from modules.config import path_outputs
+
+
+def generate_image(prompt, negative_prompt="", seed=-1, aspect_ratio="1152×896"):
+    # Ensure output directory exists
+    os.makedirs(path_outputs, exist_ok=True)
+
+    # Create minimal arguments for AsyncTask
+    args = [
+        False,  # generate_image_grid
+        prompt,
+        negative_prompt,
+        [],  # style_selections
+        "Speed",  # performance_selection
+        aspect_ratio,
+        1,  # image_number
+        "png",  # output_format
+        seed if seed != -1 else int(time.time() % 1000000000),
+        False,  # read_wildcards_in_order
+        2.0,  # sharpness
+        7.0,  # cfg_scale
+        "juggernautXL_v8Rundiffusion.safetensors",  # base_model
+        "None",  # refiner_model
+        0.5,  # refiner_switch
+    ]
+
+    # Add dummy arguments for remaining parameters
+    args += [("None", 1.0)] * 15  # loras and other unused params
+
+    # Create async task
+    async_task = AsyncTask(args)
+    async_tasks.append(async_task)
+
+    # Wait for completion
+    while not async_task.results:
+        time.sleep(0.1)
+
+    # Return first result path
+    return async_task.results[0]

@@ -24,7 +24,6 @@ from modules.ui_gradio_extensions import reload_javascript
 from modules.auth import auth_enabled, check_auth
 from modules.util import is_json
 
-worker.generate_image("car")
 def get_task(*args):
     args = list(args)
     print(args)
