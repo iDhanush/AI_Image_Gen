@@ -1,20 +1,15 @@
 from fastapi import FastAPI
 
+import args_manager
 import modules.async_worker as worker
+from modules import constants
+from modules.auth import check_auth
+from modules.config import path_outputs
 
 app = FastAPI
 
 import base64
-
-
-def image_to_base64(image_path):
-    """Convert an image to a base64 string."""
-    with open(image_path, "rb") as image_file:
-        # Read the image in binary mode
-        image_data = image_file.read()
-        # Encode the image data to base64
-        encoded_image = base64.b64encode(image_data).decode('utf-8')
-    return encoded_image
+import gradio as gr
 
 # auth_token = "2up3ov6yLf17M6gkjrK91ZoqlZO_6MjbVjwYQJfbqHFS1XZQJ"
 # import ngrok
@@ -31,21 +26,33 @@ def image_to_base64(image_path):
 # Apply nest_asyncio
 # nest_asyncio.apply()
 
-def start_ngrok():
-    import ngrok
-    # Start ngrok tunnel for port 7860
-    tunnel = ngrok.connect(7860)
-    print(f"Ngrok Tunnel URL: {tunnel.public_url}")
-    return tunnel
-start_ngrok()
+def image_to_base64(image_path):
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode("utf-8")
 
 
-@app.get('/')
-async def img_ge(prompt:str):
+def generate_image(prompt):
     path = worker.generate_image(prompt)
-    return {"img": image_to_base64(path)}
+    return path, image_to_base64(path)
 
 
+def api_generate(prompt: str):
+    _, img_b64 = generate_image(prompt)
+    return {"img": img_b64}
 
-import uvicorn
-uvicorn.run(app, host="0.0.0.0", port=7860)
+
+# Gradio UI
+with gr.Blocks() as demo:
+    gr.Markdown("# Image Generator")
+    with gr.Row():
+        prompt_input = gr.Textbox(label="Enter Prompt")
+        btn = gr.Button("Generate")
+    image_output = gr.Image(label="Generated Image")
+
+    btn.click(generate_image, inputs=[prompt_input], outputs=[image_output])
+
+# API support
+demo.launch(share=True)
+
+print("Gradio public link:", demo.share_url)
+
