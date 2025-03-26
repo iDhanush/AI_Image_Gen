@@ -1515,7 +1515,7 @@ def generate_image(
         loras=[]
     )
 
-    # Configure patch settings with ONLY VALID PARAMETERS
+    # Configure patch settings
     patch_settings[-1] = PatchSettings(
         sharpness=sharpness,
         controlnet_softness=0.25,
@@ -1526,15 +1526,16 @@ def generate_image(
     positive_cond = pipeline.clip_encode([prompt], 1)
     negative_cond = pipeline.clip_encode([negative_prompt], 1)
 
-    # Generate image
+    # Generate image with dummy callback
     imgs = pipeline.process_diffusion(
         positive_cond=positive_cond,
         negative_cond=negative_cond,
         steps=steps,
-        switch=steps,  # No refiner
+        switch=steps,
         width=width,
         height=height,
         image_seed=seed,
+        callback=lambda a, b, c, d, e: None,  # Required callback
         sampler_name="dpmpp_2m_sde_gpu",
         scheduler_name="karras",
         cfg_scale=cfg_scale,
