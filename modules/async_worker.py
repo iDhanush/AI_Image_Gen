@@ -1485,42 +1485,70 @@ def worker():
 threading.Thread(target=worker, daemon=True).start()
 import os
 import time
-from modules.config import path_outputs
+import cv2
+import numpy as np
+from modules.config import path_outputs, default_base_model_name
+from modules.patch import PatchSettings, patch_settings
+import modules.core as core
+import modules.flags as flags
+import modules.patch
 
-
-def generate_image(prompt, negative_prompt="", seed=-1, aspect_ratio="1152×896"):
-    # Ensure output directory exists
+def generate_image(
+    prompt,
+    negative_prompt="",
+    seed=-1,
+    aspect_ratio="1152×896",
+    output_format="png",
+    steps=30,
+    cfg_scale=7.0,
+    sharpness=2.0
+):
+    # Set up paths and initial configuration
     os.makedirs(path_outputs, exist_ok=True)
+    width, height = [int(x) for x in aspect_ratio.replace('×', ' ').split()]
+    seed = seed if seed >= 0 else int(time.time() % 1e9)
 
-    # Create minimal arguments for AsyncTask
-    args = [
-        False,  # generate_image_grid
-        prompt,
-        negative_prompt,
-        [],  # style_selections
-        "Speed",  # performance_selection
-        aspect_ratio,
-        1,  # image_number
-        "png",  # output_format
-        seed if seed != -1 else int(time.time() % 1000000000),
-        False,  # read_wildcards_in_order
-        2.0,  # sharpness
-        7.0,  # cfg_scale
-        "juggernautXL_v8Rundiffusion.safetensors",  # base_model
-        "None",  # refiner_model
-        0.5,  # refiner_switch
-    ]
+    # Initialize pipeline
+    pipeline.refresh_everything(
+        refiner_model_name="None",
+        base_model_name=default_base_model_name,
+        loras=[("None", 1.0)]  # Add LoRAs if needed
+    )
 
-    # Add dummy arguments for remaining parameters
-    args += [("None", 1.0)] * 15  # loras and other unused params
+    # Configure patch settings
+    patch_settings[-1] = PatchSettings(
+        sharpness=sharpness,
+        adm_scaler_end=0.3,
+        adm_scaler_positive=1.5,
+        adm_scaler_negative=0.8,
+        controlnet_softness=0.25,
+        adaptive_cfg=7.0
+    )
 
-    # Create async task
-    async_task = AsyncTask(args)
-    async_tasks.append(async_task)
+    # Process prompts
+    positive_cond = pipeline.clip_encode([prompt], 1)
+    negative_cond = pipeline.clip_encode([negative_prompt], 1)
 
-    # Wait for completion
-    while not async_task.results:
-        time.sleep(0.1)
+    # Generate image
+    imgs = pipeline.process_diffusion(
+        positive_cond=positive_cond,
+        negative_cond=negative_cond,
+        steps=steps,
+        switch=steps,  # No refiner
+        width=width,
+        height=height,
+        image_seed=seed,
+        sampler_name="dpmpp_2m_sde_gpu",
+        scheduler_name="karras",
+        cfg_scale=cfg_scale,
+        tiled=False
+    )
 
-    # Return first result path
-    return async_task.results[0]
+    # Convert and save image
+    img = imgs[0].astype(np.uint8)
+    timestamp = int(time.time())
+    filename = f"output_{timestamp}.{output_format}"
+    output_path = os.path.join(path_outputs, filename)
+    cv2.imwrite(output_path, cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+
+    return output_path
