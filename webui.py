@@ -1,13 +1,4 @@
-from fastapi import FastAPI
-
-import args_manager
 import modules.async_worker as worker
-from modules import constants
-from modules.auth import check_auth
-from modules.config import path_outputs
-
-app = FastAPI
-
 import base64
 import gradio as gr
 
@@ -25,21 +16,21 @@ import gradio as gr
 
 # Apply nest_asyncio
 # nest_asyncio.apply()
+import gradio as gr
+import base64
 
 def image_to_base64(image_path):
     with open(image_path, "rb") as img_file:
         return base64.b64encode(img_file.read()).decode("utf-8")
 
-
 def generate_image(prompt):
     path = worker.generate_image(prompt)
-    return path, image_to_base64(path)
-
+    return path  # ✅ Return only the image file path
 
 def api_generate(prompt: str):
-    _, img_b64 = generate_image(prompt)
+    path = worker.generate_image(prompt)
+    img_b64 = image_to_base64(path)
     return {"img": img_b64}
-
 
 # Gradio UI
 with gr.Blocks() as demo:
@@ -49,10 +40,9 @@ with gr.Blocks() as demo:
         btn = gr.Button("Generate")
     image_output = gr.Image(label="Generated Image")
 
-    btn.click(generate_image, inputs=[prompt_input], outputs=[image_output])
+    btn.click(generate_image, inputs=[prompt_input], outputs=[image_output])  # ✅ Expecting only one output (path)
 
-# API support
-demo.launch(share=True)
-
-print("Gradio public link:", demo.share_url)
+# Launch Gradio
+server = demo.launch(share=True)
+print("Gradio public link:", server)
 
