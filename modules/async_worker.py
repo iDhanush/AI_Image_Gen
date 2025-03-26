@@ -1483,26 +1483,30 @@ def worker():
 
 
 threading.Thread(target=worker, daemon=True).start()
+
+import modules.patch
 import os
 import time
 import cv2
 import numpy as np
 from modules.config import path_outputs, default_base_model_name
 from modules.patch import PatchSettings, patch_settings
-import modules.core as core
-import modules.flags as flags
-import modules.patch
 import modules.default_pipeline as pipeline
+
+
 def generate_image(
-    prompt,
-    negative_prompt="",
-    seed=-1,
-    aspect_ratio="1152×896",
-    output_format="png",
-    steps=30,
-    cfg_scale=7.0,
-    sharpness=2.0
+        prompt,
+        negative_prompt="",
+        seed=-1,
+        aspect_ratio="1152×896",
+        output_format="png",
+        steps=30,
+        cfg_scale=7.0,
+        sharpness=2.0
 ):
+    # Get current process ID
+    pid = os.getpid()
+
     # Set up paths and initial configuration
     os.makedirs(path_outputs, exist_ok=True)
     width, height = [int(x) for x in aspect_ratio.replace('×', ' ').split()]
@@ -1515,18 +1519,21 @@ def generate_image(
         loras=[]
     )
 
-    # Configure patch settings
-    patch_settings[-1] = PatchSettings(
+    # Configure patch settings using PID
+    patch_settings[pid] = PatchSettings(
         sharpness=sharpness,
+        adm_scaler_end=0.3,
+        adm_scaler_positive=1.5,
+        adm_scaler_negative=0.8,
         controlnet_softness=0.25,
-        adaptive_cfg=7.0
+        adaptive_cfg=cfg_scale
     )
 
     # Process prompts
     positive_cond = pipeline.clip_encode([prompt], 1)
     negative_cond = pipeline.clip_encode([negative_prompt], 1)
 
-    # Generate image with dummy callback
+    # Generate image
     imgs = pipeline.process_diffusion(
         positive_cond=positive_cond,
         negative_cond=negative_cond,
@@ -1535,7 +1542,7 @@ def generate_image(
         width=width,
         height=height,
         image_seed=seed,
-        callback=lambda a, b, c, d, e: None,  # Required callback
+        callback=lambda *args: None,  # Dummy callback
         sampler_name="dpmpp_2m_sde_gpu",
         scheduler_name="karras",
         cfg_scale=cfg_scale,
@@ -1548,5 +1555,8 @@ def generate_image(
     filename = f"output_{timestamp}.{output_format}"
     output_path = os.path.join(path_outputs, filename)
     cv2.imwrite(output_path, cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+
+    # Cleanup patch settings
+    del patch_settings[pid]
 
     return output_path
