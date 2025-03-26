@@ -1523,8 +1523,6 @@ def generate_image(
     patch_settings[pid] = PatchSettings(
         sharpness=sharpness,
         adm_scaler_end=0.3,
-        adm_scaler_positive=1.5,
-        adm_scaler_negative=0.8,
         controlnet_softness=0.25,
         adaptive_cfg=cfg_scale
     )
