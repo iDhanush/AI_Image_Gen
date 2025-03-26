@@ -1492,7 +1492,7 @@ from modules.patch import PatchSettings, patch_settings
 import modules.core as core
 import modules.flags as flags
 import modules.patch
-
+import modules.default_pipeline as pipeline
 def generate_image(
     prompt,
     negative_prompt="",
