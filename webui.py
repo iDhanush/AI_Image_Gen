@@ -38,10 +38,14 @@ def start_ngrok():
     print(f"Ngrok Tunnel URL: {tunnel.public_url}")
     return tunnel
 start_ngrok()
-import uvicorn
-uvicorn.run(app, host="0.0.0.0", port=7860)
+
 
 @app.get('/')
 async def img_ge(prompt:str):
     path = worker.generate_image(prompt)
     return {"img": image_to_base64(path)}
+
+
+
+import uvicorn
+uvicorn.run(app, host="0.0.0.0", port=7860)
