@@ -1512,15 +1512,12 @@ def generate_image(
     pipeline.refresh_everything(
         refiner_model_name="None",
         base_model_name=default_base_model_name,
-        loras=[("None", 1.0)]  # Add LoRAs if needed
+        loras=[]
     )
 
-    # Configure patch settings
+    # Configure patch settings with ONLY VALID PARAMETERS
     patch_settings[-1] = PatchSettings(
         sharpness=sharpness,
-        adm_scaler_end=0.3,
-        adm_scaler_positive=1.5,
-        adm_scaler_negative=0.8,
         controlnet_softness=0.25,
         adaptive_cfg=7.0
     )
